@@ -131,8 +131,12 @@ def processFrame(image):
    print(m1d.shape)
    m1d = np.squeeze(m1d, axis=0)
    m1d = np.squeeze(m1d, axis=2)
+   print(m1d.shape)
+   print(m1d.max())
+   print(m1d.min())
 
-   o2=overlay = Image.fromarray(cm.Reds(m1d/255, bytes=True)) 
+   #o2=overlay = Image.fromarray(cm.Reds(m1d/255, bytes=True)) 
+   o2=overlay = Image.fromarray(cm.Reds(m1d/m1d.max(), bytes=True)) 
 
    pixeldata = list(overlay.getdata())
 
@@ -146,9 +150,12 @@ def processFrame(image):
    carimg = Image.fromarray(np.uint8(image))
    carimg = carimg.convert("RGBA")
    new_img2=Image.alpha_composite(carimg, overlay)
+   new_img2= new_img2.convert("RGB")
+   o2= o2.convert("RGB")
 
-   #return new_img2
-   return o2
+   return new_img2
+   #return carimg
+   #return o2
 
 import os
 def getFiles(name):
@@ -177,7 +184,8 @@ def make_frame(t):
 
 files=loadTraining()
 
-clip = mpy.VideoClip(make_frame, duration=2) # 2 seconds
-clip.write_videofile("out.mp4",audio=False,fps=24)
+clip = mpy.VideoClip(make_frame, duration=90) # 2 seconds
+clip.write_videofile("out.mp4",audio=False,fps=30)
+#clip.write_gif("out.gif",fps=24)
 
 
