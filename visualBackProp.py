@@ -38,42 +38,42 @@ model.summary()
 from keras.models import Model
 hidden_layer = model.layers[2].output
 c1=Lambda(lambda xin: K.mean(xin,axis=3),name='lambda_new_1')(hidden_layer)
-r1=Reshape((58,78,1))(c1)
-d1 = Deconvolution2D(1, 5, 5,output_shape=(None,120,160, 1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r1)
+r1=Reshape((28,78,1))(c1)
+d1 = Deconvolution2D(1, 5, 5,output_shape=(None,60,160, 1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r1)
 
 model2 = Model(input=model.input,output=[c1,d1])
 model2.summary()
 
-a = Input(shape=(58,78,1))
-d1 = Deconvolution2D(1, 5, 5,output_shape=(None,120,160, 1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(a)
+a = Input(shape=(28,78,1))
+d1 = Deconvolution2D(1, 5, 5,output_shape=(None,60,160, 1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(a)
 model2b = Model(input=a,output=[d1])
 model2b.summary()
 
 
 hidden_layer = model.layers[4].output
 c2=Lambda(lambda xin: K.mean(xin,axis=3),name='lambda_new_2')(hidden_layer)
-r2=Reshape((27,37,1))(c2)
-d2 = Deconvolution2D(1, 5, 5,output_shape=(None,58,78,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r2)
+r2=Reshape((12,37,1))(c2)
+d2 = Deconvolution2D(1, 5, 5,output_shape=(None,28,78,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r2)
 
 model3 = Model(input=model.input,output=[c2,d2])
 model3.summary()
 
-a = Input(shape=(27,37,1))
-d2 = Deconvolution2D(1, 5, 5,output_shape=(None,58,78,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(a)
+a = Input(shape=(12,37,1))
+d2 = Deconvolution2D(1, 5, 5,output_shape=(None,28,78,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(a)
 model3b = Model(input=a,output=[d2])
 model3b.summary()
 
 
 hidden_layer = model.layers[6].output
 c3=Lambda(lambda xin: K.mean(xin,axis=3),name='lambda_new_3')(hidden_layer)
-r3=Reshape((12,17,1))(c3)
-d3 = Deconvolution2D(1, 5, 5,output_shape=(None,27,37,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r3)
+r3=Reshape((4,17,1))(c3)
+d3 = Deconvolution2D(1, 5, 5,output_shape=(None,12,37,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r3)
 
 model4 = Model(input=model.input,output=[c3,d3])
 model4.summary()
 
-a = Input(shape=(12,17,1))
-d3 = Deconvolution2D(1, 5, 5,output_shape=(None,27,37,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(a)
+a = Input(shape=(4,17,1))
+d3 = Deconvolution2D(1, 5, 5,output_shape=(None,12,37,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(a)
 model4b = Model(input=a,output=[d3])
 model4b.summary()
 
@@ -82,8 +82,8 @@ model4b.summary()
 
 hidden_layer = model.layers[8].output
 c4=Lambda(lambda xin: K.mean(xin,axis=3),name='lambda_new_4')(hidden_layer)
-r4=Reshape((5,8,1))(c4)
-d4 = Deconvolution2D(1, 3, 3,output_shape=(None,12,17,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r4)
+r4=Reshape((1,8,1))(c4)
+d4 = Deconvolution2D(1, 3, 3,output_shape=(None,4,17,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r4)
 
 model5 = Model(input=model.input,output=[c4,d4])
 model5.summary()
@@ -177,6 +177,7 @@ def make_frame(t):
     global count
     print(files[count])
     car=np.array(Image.open(files[count]))
+    car=car[60:,:]
     count=count+1
     out=processFrame(car)
     return  np.array(out)
