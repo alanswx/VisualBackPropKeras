@@ -40,17 +40,44 @@ def convertToNewModel(name):
 
   # grab the conv layers
   current_stack=[]
+  act_stack=[]
   for layer in model.layers:
     if layer.name.startswith("conv"):
         current_stack.insert(0, layer)
+        print(layer.outbound_nodes[0].outbound_layer.name)
+        nextlayer=layer.outbound_nodes[0].outbound_layer;
+        if (nextlayer.name.startswith("elu")):
+           act_stack.insert(0, nextlayer)
+        elif (nextlayer.name.startswith("activ")):
+           act_stack.insert(0, nextlayer)
+        else:
+           act_stack.insert(0, layer)
+
   # grab the activation layers connected to the conv layers
   # TODO - this is a bad way to do it!!
-  act_stack=[]
-  for layer in model.layers:
-    if layer.name.startswith("activ"):
-        act_stack.insert(0, layer)
-  start=len(act_stack)-len(current_stack)
-  act_stack=act_stack[start:]
+  #for layer in model.layers:
+  #  if layer.name.startswith("activ"):
+  #      act_stack.insert(0, layer)
+
+  #if (len(act_stack)==0):
+  #  for layer in model.layers:
+  #    if layer.name.startswith("elu"):
+  #      act_stack.insert(0, layer)
+
+
+  #if (len(act_stack)<len(current_stack)):
+  #  act_stack.insert(0,current_stack[0])
+  #start=len(act_stack)-len(current_stack)
+  #act_stack=act_stack[start:]
+
+  print("current stack:")
+  for layer in current_stack:
+    print(layer.name)
+    #print(layer.outbound_nodes[0].outbound_layer.name)
+  print("act stack:")
+  for layer in act_stack:
+    print(layer.name)
+  print("---------")
 
   lastone=None
   #  hold onto last one..
@@ -85,13 +112,15 @@ def convertToNewModel(name):
             
     bigger_shape=(bigger_shape[0],bigger_shape[1],bigger_shape[2],1)
 
-    subsample=current_stack[i].subsample
+    subsample=current_stack[i].subsample 
+    print("deconv params:")
     print(subsample)
     nb_row=current_stack[i].nb_row
     nb_col=current_stack[i].nb_col
     print(nb_col,nb_row)
     print(bigger_shape)
     name='deconv_new_'+str(i)
+    print(name)
     d1 = Deconvolution2D(1, nb_row, nb_col,output_shape=bigger_shape,subsample= subsample,border_mode='valid',activation='relu',init='one',name=name)(r1)
     #d4 = Deconvolution2D(1, 3, 3,output_shape=(None,4,17,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r4)
 
@@ -108,6 +137,14 @@ def processFrame(image,model2):
 
     #steering_angle = float(model.predict(image[None, :, :, :], batch_size=1))
     #   print(image.shape)
+
+    # transpose if model is other way
+    count, h, w, ch = model2.inputs[0].get_shape()
+    ih, iw, ich = img.shape
+    if h == ich and ch == ih:
+       img = img.transpose()
+
+
     m1d = model2.predict(image[None, :, :, :], batch_size=1)
     #print(m1d.shape)
     m1d = np.squeeze(m1d, axis=0)
@@ -170,6 +207,7 @@ def make_frame(t):
 #    return  car
 
 files=loadTraining()
+#model=convertToNewModel("dash.h5")
 model=convertToNewModel("model-20.h5")
 
 clip = mpy.VideoClip(make_frame, duration=90) # 2 seconds
