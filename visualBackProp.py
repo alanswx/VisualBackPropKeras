@@ -36,6 +36,14 @@ def almostEquals(a,b,thres=50):
 
 def convertToNewModel(name):
   model = load_model(name)
+  #print("loading"+name)
+  #with open(name, 'r') as jfile:
+  #    model = model_from_json(json.load(jfile))
+  #model.compile("sgd","mse")
+  #weights_file = name.replace('json', 'keras')
+  #print("loading weights"+weights_file)
+  #model.load_weights(weights_file)
+
   model.summary()
 
   # grab the conv layers
@@ -44,8 +52,10 @@ def convertToNewModel(name):
   for layer in model.layers:
     if layer.name.startswith("conv"):
         current_stack.insert(0, layer)
+        print('*********8')
         print(layer.outbound_nodes[0].outbound_layer.name)
         nextlayer=layer.outbound_nodes[0].outbound_layer;
+        print(nextlayer.name)
         if (nextlayer.name.startswith("elu")):
            act_stack.insert(0, nextlayer)
         elif (nextlayer.name.startswith("activ")):
@@ -70,6 +80,9 @@ def convertToNewModel(name):
   #start=len(act_stack)-len(current_stack)
   #act_stack=act_stack[start:]
 
+  #current_stack.pop(0)
+  #act_stack.pop(0)
+
   print("current stack:")
   for layer in current_stack:
     print(layer.name)
@@ -78,6 +91,8 @@ def convertToNewModel(name):
   for layer in act_stack:
     print(layer.name)
   print("---------")
+
+
 
   lastone=None
   #  hold onto last one..
@@ -93,7 +108,7 @@ def convertToNewModel(name):
     c1=Lambda(lambda xin: K.mean(xin,axis=3),name=name)(hidden_layer.output)
     name='reshape_new_'+str(i)
     r1=Reshape(our_shape,name=name)(c1)
-    lastone=r1
+    #lastone=r1
     if (i!=0):
        # if we aren't the bottom, multiply by output of layer below
        print("multiply")
@@ -113,14 +128,17 @@ def convertToNewModel(name):
     bigger_shape=(bigger_shape[0],bigger_shape[1],bigger_shape[2],1)
 
     subsample=current_stack[i].subsample 
+    #subsample=current_stack[i].strides
     print("deconv params:")
     print(subsample)
+    #nb_row,nb_col=current_stack[i].kernel_size
     nb_row=current_stack[i].nb_row
     nb_col=current_stack[i].nb_col
     print(nb_col,nb_row)
     print(bigger_shape)
     name='deconv_new_'+str(i)
     print(name)
+    print('Deconvolution2D(1,',nb_row, nb_col,'output_shape=',bigger_shape,'subsample= ',subsample,'border_mode=valid','activation=relu','init=one','name=',name)
     d1 = Deconvolution2D(1, nb_row, nb_col,output_shape=bigger_shape,subsample= subsample,border_mode='valid',activation='relu',init='one',name=name)(r1)
     #d4 = Deconvolution2D(1, 3, 3,output_shape=(None,4,17,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r4)
 
@@ -137,18 +155,23 @@ def processFrame(image,model2):
 
     #steering_angle = float(model.predict(image[None, :, :, :], batch_size=1))
     #   print(image.shape)
+    #image = cv2.resize(image, (256, 256) )
+    #image = cv2.resize(image, (200, 66) )
 
     # transpose if model is other way
     count, h, w, ch = model2.inputs[0].get_shape()
-    ih, iw, ich = img.shape
+    ih, iw, ich = image.shape
     if h == ich and ch == ih:
-       img = img.transpose()
+       image= image.transpose()
 
-
+    print(image.shape)
     m1d = model2.predict(image[None, :, :, :], batch_size=1)
-    #print(m1d.shape)
+    print(m1d.shape)
     m1d = np.squeeze(m1d, axis=0)
     m1d = np.squeeze(m1d, axis=2)
+    #m1d = cv2.resize(image, (120, 160) )
+
+    #m1d=np.resize(m1d,(120,160))
     #print(m1d.shape)
 
     #print(m1d)
@@ -157,6 +180,8 @@ def processFrame(image,model2):
     #print(m1d.max())
     #print(m1d.min())
     o2=overlay = Image.fromarray(cm.Reds(m1d/m1d.max(), bytes=True)) 
+    #o2= o2.convert("RGB")
+    #return o2
     #plt.imshow(o2);
     #plt.show();
 
@@ -183,13 +208,21 @@ import os
 def getFiles(name):
     files = os.listdir(name)
     files = [f for f in files if f[-3:] =='jpg']
+    #files = [f for f in files if f.startswith("center")]
     files.sort()
     file_paths = [os.path.join(name, f) for f in files]
     return file_paths
 
 def loadTraining():
+    #inputs='/home/alans/mydonkey/sessions/2017_02_18__01_20_31_PM'
+    #inputs='roscoe/diy_chalklines'
+    #inputs='/home/alans/shark/log_bigwebcam/'
     inputs='/home/alans/shark/log/'
+    #inputs='/home/alans/shark/logPS33-1/'
+    #inputs='log/'
+    #inputs='/data1/udacity/simulator/data/IMG/'
     files=getFiles(inputs)
+    print(len(files))
     return files
 
 import moviepy.editor as mpy
@@ -198,6 +231,7 @@ count = 0
 def make_frame(t):
     global count
     global model
+    global files
     print(files[count])
     car=np.array(Image.open(files[count]))
     car=car[60:,:]
@@ -207,9 +241,18 @@ def make_frame(t):
 #    return  car
 
 files=loadTraining()
-#model=convertToNewModel("dash.h5")
-model=convertToNewModel("model-20.h5")
-
+model=convertToNewModel("/data1/udacity/sharkal/model-14.h5")
+#model=convertToNewModel("dash")
+#model=convertToNewModel("drive_p3.json")
+#model=convertToNewModel("udacitymodel.h5")
+#model=convertToNewModel("bigmodel-20.h5")
+#model=convertToNewModel("bigmodel2-11.h5")
+#model=convertToNewModel("dsbigmodel-19.h5")
+#model=convertToNewModel("adamdrive2-20.h5")
+#model=convertToNewModel("adamdrive-17.h5")
+#model=convertToNewModel("cropmodel-20.h5")
+#model=convertToNewModel("roscoe/diy_may_second.hdf5")
+model.summary()
 clip = mpy.VideoClip(make_frame, duration=90) # 2 seconds
 clip.write_videofile("out.mp4",audio=False,fps=30)
 #clip.write_gif("out.gif",fps=24)
