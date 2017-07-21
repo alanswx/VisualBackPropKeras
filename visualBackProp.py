@@ -10,12 +10,14 @@ import cv2
 import argparse
 import pickle
 from keras.models import load_model
-from keras.layers import Convolution2D, MaxPooling2D, Activation, Lambda, Input, Deconvolution2D, Flatten, Dense, Reshape
+from keras.layers import Convolution2D, MaxPooling2D, Activation, Lambda, Input, Deconvolution2D, Flatten, Dense, Reshape, ZeroPadding2D, Cropping2D
 from keras.layers import Merge
 from keras.models import Sequential
 from keras import backend as K
 from keras.layers import merge
+import keras
 
+from distutils.version import LooseVersion
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -127,22 +129,43 @@ def convertToNewModel(name):
             
     bigger_shape=(bigger_shape[0],bigger_shape[1],bigger_shape[2],1)
 
-    subsample=current_stack[i].subsample 
-    #subsample=current_stack[i].strides
+    if (LooseVersion(keras.__version__) > LooseVersion("2.0.0")):
+      print ("Keras 2")
+      subsample=current_stack[i].strides
+      nb_row,nb_col=current_stack[i].kernel_size
+    else:
+      subsample=current_stack[i].subsample 
+      nb_row=current_stack[i].nb_row
+      nb_col=current_stack[i].nb_col
     print("deconv params:")
     print(subsample)
     #nb_row,nb_col=current_stack[i].kernel_size
-    nb_row=current_stack[i].nb_row
-    nb_col=current_stack[i].nb_col
     print(nb_col,nb_row)
     print(bigger_shape)
     name='deconv_new_'+str(i)
     print(name)
     print('Deconvolution2D(1,',nb_row, nb_col,'output_shape=',bigger_shape,'subsample= ',subsample,'border_mode=valid','activation=relu','init=one','name=',name)
     d1 = Deconvolution2D(1, nb_row, nb_col,output_shape=bigger_shape,subsample= subsample,border_mode='valid',activation='relu',init='one',name=name)(r1)
+
+    #attrs = vars(d1)
+    #print (', '.join("%s: %s" % item for item in attrs.items()))
+
+    if (d1._keras_shape[1]!=bigger_shape[1]):
+       if (d1._keras_shape[2]!=bigger_shape[2]):
+          pad=1
+       else:
+          pad=0
+       z1 = ZeroPadding2D(padding=(1, pad), data_format=None)(d1)
+       c1 = Cropping2D(cropping=((1, 0), (pad, 0)) , data_format=None)(z1)
+       print("d1:",d1._keras_shape)
+       print("z1:",z1._keras_shape)
+       print("c1:",c1._keras_shape)
+       lastone=c1
+    else:
+       lastone=d1
+
     #d4 = Deconvolution2D(1, 3, 3,output_shape=(None,4,17,1),subsample= (2, 2),border_mode='valid',activation='relu',init='one')(r4)
 
-    lastone=d1
 
 
   model2 = Model(input=model.input,output=[lastone])
@@ -215,9 +238,9 @@ def getFiles(name):
 
 def loadTraining():
     #inputs='/home/alans/mydonkey/sessions/2017_02_18__01_20_31_PM'
-    #inputs='roscoe/diy_chalklines'
+    inputs='roscoe/diy_chalklines'
     #inputs='/home/alans/shark/log_bigwebcam/'
-    inputs='/home/alans/shark/log/'
+    #inputs='/home/alans/shark/log/'
     #inputs='/home/alans/shark/logPS33-1/'
     #inputs='log/'
     #inputs='/data1/udacity/simulator/data/IMG/'
@@ -234,14 +257,14 @@ def make_frame(t):
     global files
     print(files[count])
     car=np.array(Image.open(files[count]))
-    car=car[60:,:]
+    #car=car[60:,:]
     count=count+1
     out=processFrame(car,model)
     return  np.array(out)
 #    return  car
 
 files=loadTraining()
-model=convertToNewModel("/data1/udacity/sharkal/model-14.h5")
+#model=convertToNewModel("/data1/udacity/sharkal/model-14.h5")
 #model=convertToNewModel("dash")
 #model=convertToNewModel("drive_p3.json")
 #model=convertToNewModel("udacitymodel.h5")
@@ -251,7 +274,7 @@ model=convertToNewModel("/data1/udacity/sharkal/model-14.h5")
 #model=convertToNewModel("adamdrive2-20.h5")
 #model=convertToNewModel("adamdrive-17.h5")
 #model=convertToNewModel("cropmodel-20.h5")
-#model=convertToNewModel("roscoe/diy_may_second.hdf5")
+model=convertToNewModel("roscoe/diy_may_second.hdf5")
 model.summary()
 clip = mpy.VideoClip(make_frame, duration=90) # 2 seconds
 clip.write_videofile("out.mp4",audio=False,fps=30)
