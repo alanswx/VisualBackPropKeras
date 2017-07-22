@@ -138,10 +138,10 @@ def convertToNewModel(name):
       nb_row=current_stack[i].nb_row
       nb_col=current_stack[i].nb_col
     print("deconv params:")
-    print(subsample)
+    print("subsample:",subsample)
     #nb_row,nb_col=current_stack[i].kernel_size
-    print(nb_col,nb_row)
-    print(bigger_shape)
+    print("nb_col,nb_row:",nb_col,nb_row)
+    print("bigger_shape:",bigger_shape)
     name='deconv_new_'+str(i)
     print(name)
     print('Deconvolution2D(1,',nb_row, nb_col,'output_shape=',bigger_shape,'subsample= ',subsample,'border_mode=valid','activation=relu','init=one','name=',name)
@@ -151,14 +151,22 @@ def convertToNewModel(name):
     #print (', '.join("%s: %s" % item for item in attrs.items()))
 
     if (d1._keras_shape[1]!=bigger_shape[1]):
-       if (d1._keras_shape[2]!=bigger_shape[2]):
-          pad=1
-       else:
-          pad=0
-       z1 = ZeroPadding2D(padding=(1, pad), data_format=None)(d1)
-       c1 = Cropping2D(cropping=((1, 0), (pad, 0)) , data_format=None)(z1)
        print("d1:",d1._keras_shape)
-       print("z1:",z1._keras_shape)
+       pad=0
+       if (d1._keras_shape[1]<bigger_shape[1]):
+         if (d1._keras_shape[2]!=bigger_shape[2]):
+            pad=1
+         else:
+            pad=0
+         z1 = ZeroPadding2D(padding=(1, pad), data_format=None)(d1)
+         c1 = Cropping2D(cropping=((1, 0), (pad, 0)) , data_format=None)(z1)
+         print("z1:",z1._keras_shape)
+       else:
+         print("making smaller")
+         padx=d1._keras_shape[1] - bigger_shape[1] 
+         pady=d1._keras_shape[2] - bigger_shape[2]
+         print("padx,pady",padx,pady)
+         c1 = Cropping2D(cropping=((padx, 0), (pady, 0)) , data_format=None)(d1)
        print("c1:",c1._keras_shape)
        lastone=c1
     else:
@@ -179,7 +187,8 @@ def processFrame(image,model2):
     #steering_angle = float(model.predict(image[None, :, :, :], batch_size=1))
     #   print(image.shape)
     #image = cv2.resize(image, (256, 256) )
-    #image = cv2.resize(image, (200, 66) )
+    oldimage = image
+    image = cv2.resize(image, (200, 66) )
 
     # transpose if model is other way
     count, h, w, ch = model2.inputs[0].get_shape()
@@ -217,7 +226,10 @@ def processFrame(image,model2):
             pixeldata[i]= (pixel[0],pixel[1],pixel[2],128)
 
     overlay.putdata(pixeldata)
+    #obig= cv2.resize(overlay, (320, 160) )
+
     carimg = Image.fromarray(np.uint8(image))
+    #carimg = Image.fromarray(np.uint8(oldimage))
     carimg = carimg.convert("RGBA")
     new_img2=Image.alpha_composite(carimg, overlay)
     new_img2= new_img2.convert("RGB")
@@ -238,12 +250,12 @@ def getFiles(name):
 
 def loadTraining():
     #inputs='/home/alans/mydonkey/sessions/2017_02_18__01_20_31_PM'
-    inputs='roscoe/diy_chalklines'
+    #inputs='roscoe/diy_chalklines'
     #inputs='/home/alans/shark/log_bigwebcam/'
     #inputs='/home/alans/shark/log/'
     #inputs='/home/alans/shark/logPS33-1/'
     #inputs='log/'
-    #inputs='/data1/udacity/simulator/data/IMG/'
+    inputs='/data1/udacity/simulator/data/IMG/'
     files=getFiles(inputs)
     print(len(files))
     return files
@@ -266,6 +278,7 @@ def make_frame(t):
 files=loadTraining()
 #model=convertToNewModel("/data1/udacity/sharkal/model-14.h5")
 #model=convertToNewModel("dash")
+model=convertToNewModel("/data1/udacity/CarND-Behavioral-Cloning-P3/model.h5")
 #model=convertToNewModel("drive_p3.json")
 #model=convertToNewModel("udacitymodel.h5")
 #model=convertToNewModel("bigmodel-20.h5")
@@ -274,7 +287,7 @@ files=loadTraining()
 #model=convertToNewModel("adamdrive2-20.h5")
 #model=convertToNewModel("adamdrive-17.h5")
 #model=convertToNewModel("cropmodel-20.h5")
-model=convertToNewModel("roscoe/diy_may_second.hdf5")
+#model=convertToNewModel("roscoe/diy_may_second.hdf5")
 model.summary()
 clip = mpy.VideoClip(make_frame, duration=90) # 2 seconds
 clip.write_videofile("out.mp4",audio=False,fps=30)
